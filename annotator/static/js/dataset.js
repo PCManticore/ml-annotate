@@ -243,6 +243,25 @@ class Dataset extends React.Component {
     });
   }
 
+  downloadCSV(value, e) {
+    if (e) {
+      e.preventDefault();
+    }
+    const problemId = window.location.pathname.split('/')[1];
+    const post = axios.post(`/${problemId}/dataset/trained/csv`, {
+        selectedIds: Array.from(this.state.selectedIds),
+      });
+    post.then((response) => {
+      let blob = new Blob([response.data]);
+      let link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download="a.csv";
+      link.click();
+    });
+
+    console.log(this.state.selectedIds);
+  }
+
   markSelectedAs(value, e) {
     const props = this.props;
 
@@ -361,6 +380,7 @@ class Dataset extends React.Component {
                   </select>
                 </div>,
                 <div key="b">
+                  <a href="#" className="color-yes" onClick={this.downloadCSV.bind(this)}>Download CSV</a>
                   <a href="#" className="color-yes" onClick={this.markSelectedAs.bind(this, true)}>{this.props.classificationType === 'multi-class' ? 'Categorize' : 'Mark as true'}</a>
                   {this.props.classificationType === 'multi-class' ? '' : (
                     <span>

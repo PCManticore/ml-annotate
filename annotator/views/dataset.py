@@ -1,4 +1,7 @@
-from flask import jsonify, render_template, request
+import csv
+import io
+
+from flask import jsonify, render_template, request, make_response
 from flask_login import login_required
 
 from annotator import app
@@ -54,8 +57,7 @@ def _dataset_selector(problem, filter_trained_only=False):
             Dataset.sort_value,
             label_matches,
             label_created_at
-        )
-            .filter(Dataset.problem_id == problem.id)
+        ).filter(Dataset.problem_id == problem.id)
     )
     if filter_trained_only:
         data = data.join(LabelEvent.data).filter(
@@ -176,3 +178,45 @@ def trained_dataset(problem_id):
         problem=problem,
         problem_labels=problem_labels
     )
+
+
+@app.route('/<uuid:problem_id>/dataset/trained/csv', methods=['POST'])
+@login_required
+def download_csv(problem_id):
+    problem = Problem.query.get(problem_id)
+    assert_rights_to_problem(problem)
+
+    data = request.get_json()
+    ids = [str(x) for x in data['selectedIds']]
+    if not ids:
+        return jsonify(error='No ids selected')
+
+    elements = db.session.query(
+        Dataset.id,
+        Dataset.free_text,
+        ProblemLabel.label,
+    ).join(
+        LabelEvent.data
+    ).join(
+        ProblemLabel
+    ).filter(
+        Dataset.problem_id == problem_id,
+    ).group_by(
+        Dataset.id,
+        LabelEvent.id,
+        ProblemLabel.id
+    ).distinct(Dataset.id).all()
+
+    stream = io.StringIO()
+    writer = csv.writer(stream)
+    writer.writerow(['text', 'label'])
+    for element in elements:
+        writer.writerow(element[1:])
+
+    blob = stream.getvalue()
+    response = make_response(blob)
+    cd = 'attachment; filename=data.csv'
+    response.headers['Content-Disposition'] = cd
+    response.mimetype='text/csv'
+
+    return response
