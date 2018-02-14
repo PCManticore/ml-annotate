@@ -1,5 +1,3 @@
-import urllib.parse
-
 from flask import jsonify, render_template, request
 from flask_login import login_required
 
@@ -8,6 +6,70 @@ from annotator.extensions import db
 from annotator.models import (Dataset, DatasetLabelProbability, LabelEvent,
                               Problem, ProblemLabel)
 from annotator.utils import assert_rights_to_problem
+
+
+def _dataset_selector(problem, filter_trained_only=False):
+    probabilities = db.select(
+        [db.func.json_object_agg(
+            DatasetLabelProbability.label_id,
+            DatasetLabelProbability.probability
+        )],
+        from_obj=DatasetLabelProbability
+    ).where(
+        DatasetLabelProbability.data_id == Dataset.id
+    ).correlate(Dataset.__table__).label('dataset_probabilities')
+
+    label_created_at = (
+        db.select(
+            [db.func.to_char(
+                LabelEvent.created_at,
+                db.text("'YYYY-MM-DD HH24:MI:SS'")
+            )],
+            from_obj=LabelEvent
+        ).where(LabelEvent.data_id == Dataset.id)
+            .order_by(LabelEvent.created_at.desc())
+            .limit(1)
+            .correlate(Dataset.__table__)
+            .label('label_created_at')
+    )
+
+    label_matches = db.select(
+        [db.func.json_agg(db.func.json_build_array(
+            LabelEvent.label_id,
+            LabelEvent.label_matches
+        ))],
+        from_obj=LabelEvent
+    ).where(
+        LabelEvent.data_id == Dataset.id
+    ).correlate(Dataset.__table__).label('label_matches')
+
+    data = (
+        db.session.query(
+            Dataset.id,
+            Dataset.free_text,
+            Dataset.entity_id,
+            Dataset.table_name,
+            Dataset.meta,
+            probabilities,
+            Dataset.sort_value,
+            label_matches,
+            label_created_at
+        )
+            .filter(Dataset.problem_id == problem.id)
+    )
+    if filter_trained_only:
+        data = data.join(LabelEvent.data).filter(
+            Dataset.problem_id == problem.id
+        ).group_by(Dataset.id, LabelEvent.id).distinct(Dataset.id)
+
+    data = data.order_by(Dataset.id.asc()).all()
+    problem_labels = db.session.query(
+        ProblemLabel.id,
+        ProblemLabel.label
+    ).filter(
+        ProblemLabel.problem == problem
+    ).order_by(ProblemLabel.order_index).all()
+    return data, problem_labels
 
 
 @app.route('/<uuid:problem_id>/multi_class_batch_label', methods=['POST'])
@@ -84,72 +146,29 @@ def batch_label(problem_id):
 @app.route('/<uuid:problem_id>/dataset')
 @login_required
 def dataset(problem_id):
-    params = urllib.parse.parse_qs(request.query_string.decode())
-    show_only_trained = params.get('show_only_trained')
-
     problem = Problem.query.get(problem_id)
     assert_rights_to_problem(problem)
 
-    probabilities = db.select(
-        [db.func.json_object_agg(
-            DatasetLabelProbability.label_id,
-            DatasetLabelProbability.probability
-        )],
-        from_obj=DatasetLabelProbability
-    ).where(
-        DatasetLabelProbability.data_id == Dataset.id
-    ).correlate(Dataset.__table__).label('dataset_probabilities')
+    data, problem_labels = _dataset_selector(problem)
 
-    label_created_at = (
-        db.select(
-            [db.func.to_char(
-                LabelEvent.created_at,
-                db.text("'YYYY-MM-DD HH24:MI:SS'")
-            )],
-            from_obj=LabelEvent
-        ).where(LabelEvent.data_id == Dataset.id)
-        .order_by(LabelEvent.created_at.desc())
-        .limit(1)
-        .correlate(Dataset.__table__)
-        .label('label_created_at')
+    return render_template(
+        'dataset.html',
+        data=data,
+        problem=problem,
+        problem_labels=problem_labels
     )
 
-    label_matches = db.select(
-        [db.func.json_agg(db.func.json_build_array(
-            LabelEvent.label_id,
-            LabelEvent.label_matches
-        ))],
-        from_obj=LabelEvent
-    ).where(
-        LabelEvent.data_id == Dataset.id
-    ).correlate(Dataset.__table__).label('label_matches')
 
-    data = (
-        db.session.query(
-            Dataset.id,
-            Dataset.free_text,
-            Dataset.entity_id,
-            Dataset.table_name,
-            Dataset.meta,
-            probabilities,
-            Dataset.sort_value,
-            label_matches,
-            label_created_at
-        )
-        .filter(Dataset.problem_id == problem.id)
+@app.route('/<uuid:problem_id>/dataset/trained')
+@login_required
+def trained_dataset(problem_id):
+    problem = Problem.query.get(problem_id)
+    assert_rights_to_problem(problem)
+
+    data, problem_labels = _dataset_selector(
+        problem,
+        filter_trained_only=True,
     )
-    if show_only_trained:
-        data = data.join(LabelEvent.data).filter(
-            Dataset.problem_id == problem.id
-        ).group_by(Dataset.id, LabelEvent.id).distinct(Dataset.id)
-
-    data = data.order_by(Dataset.id.asc()).all()
-    problem_labels = db.session.query(
-        ProblemLabel.id,
-        ProblemLabel.label
-    ).filter(
-        ProblemLabel.problem == problem
-    ).order_by(ProblemLabel.order_index).all()
 
     return render_template(
         'dataset.html',

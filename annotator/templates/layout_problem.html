@@ -8,7 +8,7 @@
         <ul class="nav navbar-nav">
           <li {% if request.url_rule.endpoint == 'train' %}class="active"{% endif %}><a href="{{ url_for('train', problem_id=problem.id) }}">Train new labels</a></li>
           <li {% if request.url_rule.endpoint == 'dataset' %}class="active"{% endif %}><a href="{{ url_for('dataset', problem_id=problem.id) }}">Data</a></li>
-        <li {% if request.url_rule.endpoint == 'dataset' %}class="active"{% endif %}><a href="{{ url_for('dataset', problem_id=problem.id) }}?show_only_trained=True">Trained data</a></li>
+          <li {% if request.url_rule.endpoint == 'dataset' %}class="active"{% endif %}><a href="{{ url_for('trained_dataset', problem_id=problem.id) }}">Trained data</a></li>
           <li {% if request.url_rule.endpoint == 'training_job' %}class="active"{% endif %}><a href="{{ url_for('training_job', problem_id=problem.id) }}">Processed jobs</a></li>
           <li><a href="{{ url_for('logout') }}">Logout</a></li>
         </ul>
