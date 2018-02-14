@@ -2,7 +2,6 @@ import re
 
 import click
 import requests
-from sh import createdb, dropdb, psql
 
 from .app import app
 from .extensions import db
@@ -90,21 +89,3 @@ def _createtables():
     from alembic import command
     alembic_cfg = Config('alembic.ini')
     command.stamp(alembic_cfg, 'head')
-
-
-@app.cli.command()
-def resetdb():
-    """Create the tables."""
-    import annotator.models  # noqa
-
-    click.echo('Resetting database...')
-
-    query = '''
-        SELECT pg_terminate_backend(pid)
-        FROM pg_stat_activity
-        WHERE datname = '{}'
-    '''.format(db.engine.url.database)
-    psql('--command', query)
-    dropdb('--if-exists', db.engine.url.database)
-    createdb(db.engine.url.database)
-    _createtables()

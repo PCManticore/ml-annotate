@@ -1,0 +1,17 @@
+version: '3'
+services:
+  
+ db:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_USER=dbuser
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=ml_annotator
+      - POSTGRES_PORT=5432
+    ports:
+      - "5432:5432"
+    volumes:
+      - mlannotate_pgdata:/var/lib/postgresql/data
+
+volumes:
+  mlannotate_pgdata:
