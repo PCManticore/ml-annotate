@@ -1,3 +1,5 @@
+import urllib.parse
+
 from flask import jsonify, render_template, request
 from flask_login import login_required
 
@@ -82,6 +84,9 @@ def batch_label(problem_id):
 @app.route('/<uuid:problem_id>/dataset')
 @login_required
 def dataset(problem_id):
+    params = urllib.parse.parse_qs(request.query_string.decode())
+    show_only_trained = params.get('show_only_trained')
+
     problem = Problem.query.get(problem_id)
     assert_rights_to_problem(problem)
 
@@ -132,9 +137,13 @@ def dataset(problem_id):
             label_created_at
         )
         .filter(Dataset.problem_id == problem.id)
-        .order_by(Dataset.id.asc())
-        .all()
     )
+    if show_only_trained:
+        data = data.join(LabelEvent.data).filter(
+            Dataset.problem_id == problem.id
+        ).group_by(Dataset.id, LabelEvent.id).distinct(Dataset.id)
+
+    data = data.order_by(Dataset.id.asc()).all()
     problem_labels = db.session.query(
         ProblemLabel.id,
         ProblemLabel.label
