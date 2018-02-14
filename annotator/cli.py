@@ -1,6 +1,7 @@
 import re
 
 import click
+import pandas
 import requests
 
 from .app import app
@@ -19,6 +20,38 @@ def add_user(username, password):
     ))
     db.session.commit()
     click.echo('User %s added' % username)
+
+
+@app.cli.command()
+@click.option('--dataset', required=True)
+@click.option('--problem-name', required=True)
+@click.option('--labels', required=True, multiple=True)
+@click.option('--size', type=int, default=5000)
+def import_from_dataset(problem_name, labels, dataset, size):
+    print('Reading the given dataset file')
+    df = pandas.read_csv(dataset)
+    elems = df.sample(size)
+    text_elements = elems['text'].values
+
+    problem_labels = [
+        ProblemLabel(label=label, order_index=index)
+        for index, label in enumerate(labels, start=1)
+    ]
+    multi_class = Problem(
+        name=problem_name,
+        classification_type='multi-class',
+        labels=problem_labels,
+    )
+    for i, text_element in enumerate(text_elements):
+        db.session.add(Dataset(
+            table_name=f'nlp.{problem_name}',
+            entity_id=f'text{i}',
+            problem=multi_class,
+            free_text=text_element,
+        ))
+
+    db.session.commit()
+    print(f'Inserted {i} elements')
 
 
 @app.cli.command()
