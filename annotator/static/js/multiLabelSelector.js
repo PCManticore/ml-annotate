@@ -13,6 +13,10 @@ class MultiLabelSelector extends React.Component {
     this.state = {
       selected: new Set()
     };
+    this.alphabetBindingKeys = [
+      'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z',
+      'x', 'c', 'v', 'b', 'n', 'm'
+    ];
     this.keyBindings = {};
   }
 
@@ -21,7 +25,14 @@ class MultiLabelSelector extends React.Component {
     window.Mousetrap.bind('enter', this.keyBindings['submit']);
     this.props.labels.map((label, i) => {
       this.keyBindings[label.id] = () => this.selectLabel(label.id);
-      window.Mousetrap.bind('' + (i + 1), this.keyBindings[label.id] );
+      if (i <= 9) {
+        window.Mousetrap.bind('' + (i), this.keyBindings[label.id] );
+      } else {
+        window.Mousetrap.bind(
+          this.alphabetBindingKeys[i - 10],
+          this.keyBindings[label.id] );
+      }
+
     });
   }
   componentWillUnmount() {
@@ -70,7 +81,8 @@ class MultiLabelSelector extends React.Component {
             <a key={x.id} href="#" onClick={this.selectLabel.bind(this, x.id)} className={this.state.selected.has(x.id) ? 'selected color-' + x.order_index : 'color-' + x.order_index}>
               <span className="help">{this.state.selected.has(x.id) ? <i className="glyphicon glyphicon-ok"></i> : <i className="glyphicon glyphicon-remove"></i>}</span>
               <span className="name">{x.name}</span>
-              {i <= 9 ? <span className="keybinding">{(i+1)}</span> : ''}
+              {i <= 9 ? <span className="keybinding">{(i)}</span> :
+                        <span className="keybinding">{this.alphabetBindingKeys[i-10]}</span>}
             </a>
           ))}
         </div>
