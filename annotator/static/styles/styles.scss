@@ -329,12 +329,13 @@ html {
 }
 .multi-label-selector {
   .labels {
-    display: flex;
+    display: inline-block;
+    column-count: 4;
     margin-left: -5px;
     margin-right: -5px;
     margin-bottom: 10px;
     > a {
-      display: block;
+      display: inline-block;
       color: white;
       margin: 5px;
       width: 100%;
