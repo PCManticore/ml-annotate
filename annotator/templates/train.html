@@ -21,11 +21,9 @@
           <button type="submit" id="button3" class="button button-skip"><span class="help">Skip this item and do not ask again</span>Skip<span class="keybinding">3</span></button>
         </form>
       </div>
-      <p style="padding-left: 15px; color: gray;"><strong>Tip:</strong> You may use keybindings 1, 2 and 3 to label data faster</p>
     {% else %}
       <div id="react-multi-label"></div>
       <script>annotate.renderMultiLabelSelector('react-multi-label', {{ problem_labels_arr | tojson }}, {{ dict(data_id=sample.id, classification_type=problem.classification_type)|tojson }});</script>
-      <p style="padding-left: 15px; padding-top: 10px; color: gray;"><strong>Tip:</strong> You may use keybindings 1, 2 and 3 to label data faster</p>
     {% endif %}
     <table class="table" style="margin-top: 30px;">
       {# <tr>
@@ -39,14 +37,6 @@
       <tr>
         <th>Table name</th>
         <td>{{ sample.table_name }}</td>
-      </tr>
-      <tr>
-        <th>Probability</th>
-        <td>
-          {% for probability in sample.probabilities %}
-            {{ probability.label.label }}: {% if probability.probability is none %}n/a{% else %}{{ probability.probability|round(2) }}{% endif %}
-          {% endfor %}
-        </td>
       </tr>
       <tr>
         <td colspan="2" style="font-size: 20px; padding: 10px;"><div style="min-height: 200px;">{{ sample.free_text }}</div></td>
